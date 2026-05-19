@@ -161,7 +161,7 @@ try{firebase.initializeApp(fbCfg)}catch(e){document.getElementById('ob-list').in
 const db=firebase.database(),dbP=db.ref('people'),dbE=db.ref('expenses'),dbN=db.ref('nid'),dbPay=db.ref('payments');
 let currentUser=localStorage.getItem(LSKEY)||null;
 function saveMe(){if(currentUser)localStorage.setItem(LSKEY,currentUser);else localStorage.removeItem(LSKEY)}
-let people=[{n:'Maat 1',iban:''},{n:'Maat 2',iban:''},{n:'Maat 3',iban:''},{n:'Maat 4',iban:''},{n:'Maat 5',iban:''},{n:'Maat 6',iban:''},{n:'Maat 7',iban:''},{n:'Maat 8',iban:''}];
+let people=[{n:'Maat 1',iban:''},{n:'Maat 2',iban:''},{n:'Maat 3',iban:''}];
 let expenses=[],payments=[],nid=1,fbReady=false,filt='all',curTab='exp';
 function saveData(){dbP.set(people);dbE.set(expenses);dbN.set(nid);dbPay.set(payments)}
 function savePay(){dbPay.set(payments)}
