@@ -458,7 +458,7 @@ function renderHotties(){
   var cats=_htCats.map(function(c){
     var stars='';
     for(var s=1;s<=5;s++){
-      var myS=_htMyScores(h);var cls='ht-star'+(myS[c.k]>=s?' on':'');var oc='_htSetScore("'+c.k+'",'+s+')';stars+=['<div class="',cls,'" onclick="',oc,'">★</div>'].join('');
+      var myS=_htMyScores(h);var cls='ht-star'+(myS[c.k]>=s?' on':'');stars+=['<div class="',cls,'" data-cat="',c.k,'" data-score="',s,'">★</div>'].join('');
     }
     return '<div class="ht-cat"><img src="'+_htIcons[c.k]+'" class="ht-cat-icon" alt="'+c.l+'"><span class="ht-cat-lbl">'+c.l+'</span><div class="ht-stars">'+stars+'</div></div>';
   }).join('');
@@ -470,10 +470,25 @@ function renderHotties(){
   ov.innerHTML='<div class="ht-hdr"><div class="dbk" onclick="document.getElementById(\'ht-ov\').classList.remove(\'open\')">\u2190 Terug</div><h2>\uD83C\uDF36\uFE0F Hottie Ranker</h2></div>'
     +'<div class="ht-tabs">'+tabs+'</div>'
     +'<div class="ht-body">'
-    +'<div class="ht-photo" onclick="_htPickPhoto()" id="ht-photo-box">'+photoHtml+'</div>'
+    +'<div class="ht-photo" id="ht-photo-box" data-action="pick-photo">'+photoHtml+'</div>'
     +avgHtml
     +cats
     +'</div>';
+  // Event delegation for stars and photo
+  var ov2=document.getElementById('ht-ov');
+  ov2.onclick=function(e){
+    var star=e.target.closest?e.target.closest('[data-cat]'):null;
+    if(star&&star.dataset&&star.dataset.cat){
+      _htSetScore(star.dataset.cat,parseInt(star.dataset.score));
+      return;
+    }
+    var photo=e.target.closest?e.target.closest('[data-action="pick-photo"]'):null;
+    if(photo){_htPickPhoto();return;}
+    var tab=e.target.closest?e.target.closest('.ht-tab'):null;
+    if(tab&&tab.dataset&&tab.dataset.idx!==undefined){
+      _htIdx=parseInt(tab.dataset.idx);renderHotties();
+    }
+  };
 }
 function _htSetScore(cat,val){
   var me=currentUser||'?';
