@@ -152,7 +152,7 @@ body{font-family:var(--f);color:var(--tx);background:var(--bg);-webkit-tap-highl
 <div class="add-bar" id="add-bar"><div class="ab-plus">+</div><div class="ab-txt">Drop een uitgave</div></div>
 <div class="pnl on" id="p-exp"><div class="cpills" id="cpills"></div><div id="elist"></div></div>
 <div class="pnl" id="p-bal"><div class="bal-hero" id="bal-hero"></div><div id="blist"></div></div>
-<div class="pnl" id="p-set"><div id="slist"></div><div class="isec"><h3>Uitgaven per persoon</h3><div id="spending-list"></div></div><div class="isec"><h3>IBAN snelkopie</h3><div id="iban-list"></div></div><div class="isec" id="paylog-sec" style="display:none"><h3>Betaallog</h3><div id="paylog"></div></div></div>
+<div class="pnl" id="p-set"><div id="slist"></div><div class="isec"><h3>Aandeel per persoon</h3><div id="spending-list"></div></div><div class="isec"><h3>IBAN snelkopie</h3><div id="iban-list"></div></div><div class="isec" id="paylog-sec" style="display:none"><h3>Betaallog</h3><div id="paylog"></div></div></div>
 <div class="pnl" id="p-ppl"><div style="font-size:12px;color:var(--tx2);margin-bottom:10px">El grupo. Duid aan wie jij bent!</div><div id="ppl-list"></div><button class="ppl-add" id="ppl-add">+ Nog een amigo erbij</button></div>
 </div>
 <div class="bnav" id="bnav"></div>
@@ -244,7 +244,14 @@ var el=document.getElementById('spending-list');
 if(!el)return;
 var totals={};
 names().forEach(function(n){totals[n]=0});
-expenses.forEach(function(e){if(totals[e.payer]!==undefined)totals[e.payer]+=e.a});
+expenses.forEach(function(e){
+  var sh=e.a/e.split.length;
+  e.split.forEach(function(p){
+    if(totals[p]!==undefined){
+      totals[p]+=(e.exactAmounts&&e.exactAmounts[p]!=null)?e.exactAmounts[p]:sh;
+    }
+  });
+});
 var mx=Math.max.apply(null,Object.values(totals).concat([1]));
 var html=names().map(function(n){
 var v=totals[n]||0;
