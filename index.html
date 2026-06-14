@@ -177,13 +177,13 @@ function saveData(){dbP.set(people);dbE.set(expenses);dbN.set(nid);dbPay.set(pay
 function savePay(){dbPay.set(payments)}
 function fixArr(v){if(!v)return[];return Array.isArray(v)?v:Object.values(v)}
 function fixPeople(v){if(!v)return people;const arr=Array.isArray(v)?v:Object.values(v);const f=arr.filter(p=>p&&p.n);return f.length?f:people}
-let _loadCount=0;
-function checkReady(){_loadCount++;if(_loadCount>=4&&!fbReady){fbReady=true;initApp()}}
-dbP.on('value',s=>{var v=s.val();if(!v){dbP.set(people)}else{people=fixPeople(v)}if(fbReady)render();else checkReady()});
-dbE.on('value',s=>{expenses=fixArr(s.val());if(fbReady)render();else checkReady()});
-dbN.on('value',s=>{if(s.val())nid=s.val();if(!fbReady)checkReady()});
-dbPay.on('value',s=>{payments=fixArr(s.val());if(fbReady)render();else checkReady()});
-setTimeout(()=>{if(!fbReady){fbReady=true;initApp();console.log('Firebase timeout — using defaults')}},5000);
+let _loaded={p:false,e:false,n:false,pay:false},_seeded=false;
+function checkReady(){if(_loaded.p&&_loaded.e&&_loaded.n&&_loaded.pay&&!fbReady){fbReady=true;initApp()}}
+dbP.on('value',function(s){var v=s.val();if(!v&&!_seeded){_seeded=true;dbP.set(people)}else if(v){people=fixPeople(v)}if(fbReady){render()}else{_loaded.p=true;checkReady()}});
+dbE.on('value',function(s){expenses=fixArr(s.val());if(fbReady){render()}else{_loaded.e=true;checkReady()}});
+dbN.on('value',function(s){if(s.val())nid=s.val();if(!fbReady){_loaded.n=true;checkReady()}});
+dbPay.on('value',function(s){payments=fixArr(s.val());if(fbReady){render()}else{_loaded.pay=true;checkReady()}});
+setTimeout(function(){if(!fbReady){fbReady=true;initApp();console.log('Firebase timeout')}},5000);
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}
 function pcol(n){const i=people.findIndex(p=>p.n===n);return PCOL[(i>=0?i:0)%PCOL.length]}
 function names(){return people.map(p=>p.n)}
