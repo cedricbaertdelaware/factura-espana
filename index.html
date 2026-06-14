@@ -177,21 +177,57 @@ function saveData(){dbP.set(people);dbE.set(expenses);dbN.set(nid);dbPay.set(pay
 function savePay(){dbPay.set(payments)}
 function fixArr(v){if(!v)return[];return Array.isArray(v)?v:Object.values(v)}
 function fixPeople(v){if(!v)return people;const arr=Array.isArray(v)?v:Object.values(v);const f=arr.filter(p=>p&&p.n);return f.length?f:people}
-let _loaded={p:false,e:false,n:false,pay:false},_seeded=false;
-function checkReady(){if(_loaded.p&&_loaded.e&&_loaded.n&&_loaded.pay&&!fbReady){fbReady=true;initApp()}}
-dbP.on('value',function(s){var v=s.val();if(!v&&!_seeded){_seeded=true;dbP.set(people)}else if(v){people=fixPeople(v)}if(fbReady){render()}else{_loaded.p=true;checkReady()}});
-dbE.on('value',function(s){expenses=fixArr(s.val());if(fbReady){render()}else{_loaded.e=true;checkReady()}});
-dbN.on('value',function(s){if(s.val())nid=s.val();if(!fbReady){_loaded.n=true;checkReady()}});
-dbPay.on('value',function(s){payments=fixArr(s.val());if(fbReady){render()}else{_loaded.pay=true;checkReady()}});
-setTimeout(function(){if(!fbReady){fbReady=true;initApp();console.log('Firebase timeout')}},5000);
+var _fbLoaded={p:false,e:false,n:false,pay:false};
+function _tryInit(){
+  if(_fbLoaded.p&&_fbLoaded.e&&_fbLoaded.n&&_fbLoaded.pay&&!fbReady){
+    fbReady=true;
+    initApp();
+  }
+}
+dbP.on('value',function(s){
+  var v=s.val();
+  if(v){
+    people=fixPeople(v);
+  } else {
+    dbP.set(people);
+  }
+  if(!_fbLoaded.p){_fbLoaded.p=true;_tryInit();}
+  else if(fbReady){
+    var me=localStorage.getItem(LSKEY);
+    if(me&&people.find(function(p){return p.n===me})){currentUser=me;}
+    render();
+  }
+});
+dbE.on('value',function(s){
+  expenses=fixArr(s.val());
+  if(!_fbLoaded.e){_fbLoaded.e=true;_tryInit();}
+  else if(fbReady){render();}
+});
+dbN.on('value',function(s){
+  if(s.val())nid=s.val();
+  if(!_fbLoaded.n){_fbLoaded.n=true;_tryInit();}
+});
+dbPay.on('value',function(s){
+  payments=fixArr(s.val());
+  if(!_fbLoaded.pay){_fbLoaded.pay=true;_tryInit();}
+  else if(fbReady){render();}
+});
+setTimeout(function(){if(!fbReady){fbReady=true;initApp();}},5000);
 function ini(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)}
 function pcol(n){const i=people.findIndex(p=>p.n===n);return PCOL[(i>=0?i:0)%PCOL.length]}
 function names(){return people.map(p=>p.n)}
 function calcBalances(){var b={};names().forEach(function(n){b[n]=0});expenses.forEach(function(e){b[e.payer]=(b[e.payer]||0)+e.a;if(e.exactAmounts){names().forEach(function(n){if(b[n]!==undefined&&e.exactAmounts[n])b[n]-=e.exactAmounts[n]})}else{var sh=e.a/e.split.length;e.split.forEach(function(p){if(b[p]!==undefined)b[p]-=sh})}});payments.forEach(function(pm){if(b[pm.f]!==undefined)b[pm.f]+=pm.a;if(b[pm.t]!==undefined)b[pm.t]-=pm.a});return b}function getMyBal(){if(!currentUser)return 0;return calcBalances()[currentUser]||0}
 let _tt=null;function toast(t){const e=document.getElementById('toast');if(_tt)clearTimeout(_tt);e.classList.remove('show');void e.offsetWidth;e.textContent=t;e.classList.add('show');_tt=setTimeout(()=>{e.classList.remove('show');_tt=null},2000)}
 function initApp(){
-  if(currentUser && !people.find(p=>p.n===currentUser)){currentUser=null;saveMe()}
-  if(!currentUser)showOnboard();else startApp()
+  var me=localStorage.getItem(LSKEY)||null;
+  if(me&&people.find(function(p){return p.n===me})){
+    currentUser=me;
+    startApp();
+  } else {
+    currentUser=null;
+    localStorage.removeItem(LSKEY);
+    showOnboard();
+  }
 }
 function showOnboard(){document.getElementById('app').style.display='none';document.getElementById('onboard').classList.remove('hide');const ppl=people.filter(p=>p&&p.n);if(!ppl.length){document.getElementById('ob-list').innerHTML='<div style="color:var(--tx2);font-size:13px;padding:20px">Geen squad gevonden. Check je verbinding.</div>';return}document.getElementById('ob-list').innerHTML=ppl.map((p,i)=>`<div class="ob-item" onclick="pickMe(${i})"><div class="bav" style="background:${PCOL[i%PCOL.length]}20;color:${PCOL[i%PCOL.length]}">${ini(p.n)}</div>${p.n}</div>`).join('')}
 function pickMe(i){currentUser=people[i].n;saveMe();document.getElementById('onboard').classList.add('hide');startApp();toast('¡Bienvenido '+currentUser+'!')}
@@ -223,11 +259,13 @@ function renderSettle(){var b=calcBalances();const dbt=names().filter(n=>b[n]<-0
 function markPaid(f,t,a){
 var ms=document.getElementById('ms');
 var full=Math.round(a*100)/100;
+var safeF=f.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+var safeT=t.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 ms.innerHTML='<h2>Betaling ingeven<span onclick="closeMo()">Laat maar</span></h2>'
   +'<div style="font-size:13px;color:var(--tx2);margin-bottom:10px">'+f+' → '+t+'</div>'
   +'<div class="fg fg-big"><input type="number" id="pay-amt" value="'+full.toFixed(2)+'" step="0.01" min="0.01" inputmode="decimal"></div>'
-  +'<button style="width:100%;padding:8px;border-radius:var(--r);border:1px solid var(--brd2);background:var(--bg2);font-size:12px;cursor:pointer;font-family:var(--f);font-weight:600;color:var(--tx2);margin-bottom:10px" onclick="document.getElementById('pay-amt').value=''+full.toFixed(2)+''">Volledig bedrag (€'+full.toFixed(2)+')</button>'
-  +'<button class="save-btn" onclick="confirmPay(''+f.replace(/'/g,"\'")+"','"+t.replace(/'/g,"\'")+"',"+full+')">Betaald!</button>';
+  +'<button onclick="document.getElementById(\'pay-amt\').value=\''+full.toFixed(2)+'\';" style="width:100%;padding:8px;border-radius:var(--r);border:1px solid var(--brd2);background:var(--bg2);font-size:12px;cursor:pointer;font-family:var(--f);font-weight:600;color:var(--tx2);margin-bottom:10px">Volledig bedrag (€'+full.toFixed(2)+')</button>'
+  +'<button class="save-btn" onclick="confirmPay(\''+safeF+'\',\''+safeT+'\','+full+')">Betaald!</button>';
 document.getElementById('mo').classList.add('open');
 setTimeout(function(){var i=document.getElementById('pay-amt');i.focus();i.select()},150)}
 function confirmPay(f,t,full){
